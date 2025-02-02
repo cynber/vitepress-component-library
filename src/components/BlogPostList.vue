@@ -7,6 +7,13 @@
 
     <!-- Dynamic Card Rendering -->
     <component :is="containerComponent" class="cards-container">
+      <TitleCard
+        v-if="showTitleCard"
+        :title="headerTitle"
+        :date="headerDate"
+        :title-lines="headerTitleLines"
+        :link="headerLink"
+      />
       <component
         v-for="post in displayedPosts"
         :key="post.url"
@@ -19,11 +26,12 @@
 
 <script setup lang="ts">
 import { inject, computed } from "vue";
-import { formatDate } from '@/utils/MyUtils';
+import { formatDate } from "@/utils/MyUtils";
 import HorizontalCard from "./cards/HorizontalCard.vue";
 import VerticalCard from "./cards/VerticalCard.vue";
 import HorizontalContainer from "./containers/HorizontalContainer.vue";
 import VerticalContainer from "./containers/VerticalContainer.vue";
+import TitleCard from "./cards/HeaderCard.vue";
 
 interface Frontmatter {
   title: string;
@@ -47,6 +55,10 @@ interface Author {
 }
 
 interface BlogPostListProps {
+  headerTitle?: string;
+  headerTitleLines?: number;
+  headerLink?: string;
+  headerDate?: string;
   posts?: Post[];
   format?: "debug" | "vertical" | "horizontal";
   sortOrder?: "ascending" | "descending";
@@ -72,10 +84,17 @@ interface BlogPostListProps {
   authorsDataKey?: string;
 }
 
-const props = defineProps<BlogPostListProps>();
+const props = withDefaults(defineProps<BlogPostListProps>(), {
+  headerTitle: "",
+  headerDate: "",
+});
 
-const injectedPostsData = inject<Post[]>(props.postsDataKey || 'postsData', []);
-const authors = inject<Record<string, Author>>(props.authorsDataKey || 'authors', {});
+const showTitleCard = computed(() => {
+  return !!(props.headerTitle || props.headerDate || props.headerLink);
+});
+
+const injectedPostsData = inject<Post[]>(props.postsDataKey || "postsData", []);
+const authors = inject<Record<string, Author>>(props.authorsDataKey || "authors", {});
 
 const posts = computed(() => props.posts || injectedPostsData);
 

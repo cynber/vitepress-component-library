@@ -22,6 +22,7 @@
 
 <script setup lang="ts">
 import { inject, computed, onMounted, onUnmounted, ref, nextTick, watch } from "vue";
+import { withBase } from "vitepress";
 import "photoswipe/style.css";
 import VerticalContainer from "./containers/VerticalContainer.vue";
 import ImageCardSquare from "./cards/ImageCardSquare.vue";
@@ -51,19 +52,15 @@ const galleryId = ref(`gallery-${Math.random().toString(36).substr(2, 9)}`);
 let lightbox: any = null;
 
 const initPhotoSwipe = async () => {
-  // Ensure any existing instance is destroyed
   if (lightbox) {
     lightbox.destroy();
     lightbox = null;
   }
 
-  // Wait for next tick to ensure DOM is ready
   await nextTick();
 
-  // Dynamically import PhotoSwipe
   const { default: PhotoSwipeLightbox } = await import("photoswipe/lightbox");
 
-  // Initialize with a small delay to ensure everything is hydrated
   setTimeout(() => {
     try {
       lightbox = new PhotoSwipeLightbox({
@@ -107,15 +104,15 @@ const formattedDate = computed(() => {
     : dateObj.toLocaleDateString(undefined, options);
 });
 
-const containerComponent = computed(() => {
-  return VerticalContainer;
+const containerComponent = computed(() => VerticalContainer);
+
+const processedFolders = computed(() => {
+  return props.folders?.map((folder) => withBase(folder)) || [];
 });
 
 const filteredImages = computed(() => {
-  // If neither folders nor images are specified, return all images
-  if (!props.folders?.length && !props.images?.length) {
+  if (!processedFolders.value.length && !props.images?.length) {
     return galleryData.filter((image) => {
-      // Only apply extension filters
       const ext = image.filename.split(".").pop()?.toLowerCase();
       if (props.excludeExtensions?.length && ext && props.excludeExtensions.includes(ext))
         return false;
@@ -123,22 +120,21 @@ const filteredImages = computed(() => {
         props.includeExtensions?.length &&
         ext &&
         !props.includeExtensions.includes(ext)
-      )
+      ) {
         return false;
+      }
       return true;
     });
   }
 
   return galleryData.filter((image) => {
-    // Check extensions first
     const ext = image.filename.split(".").pop()?.toLowerCase();
     if (props.excludeExtensions?.length && ext && props.excludeExtensions.includes(ext))
       return false;
     if (props.includeExtensions?.length && ext && !props.includeExtensions.includes(ext))
       return false;
 
-    // Include image if it's in specified folders OR it's in specified images
-    const inFolder = props.folders?.includes(image.folder) || false;
+    const inFolder = processedFolders.value.includes(image.folder);
     const inImages = props.images?.includes(image.path) || false;
 
     return inFolder || inImages;
@@ -159,7 +155,6 @@ const sortedImageUrls = computed(() => {
   return filteredImages.value.map((img) => img.path).sort();
 });
 
-// Reinitialize PhotoSwipe when gallery content changes
 watch(sortedImageUrls, () => {
   initPhotoSwipe();
 });
